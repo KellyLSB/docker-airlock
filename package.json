@@ -1,0 +1,32 @@
+{
+  "name": "docker-airlock",
+  "version": "0.0.1",
+  "description": "Dock to the Airlock. Boot2Docker for Docker.IO ensurance library.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KellyLSB/docker-airlock.git"
+  },
+  "keywords": [
+    "mash",
+    "bash",
+    "mashbash",
+    "airlock",
+    "docker",
+    "docker.io",
+    "boot2docker"
+  ],
+  "author": "Kelly Lauren-Summer Becker-Neuding",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/KellyLSB/docker-airlock/issues"
+  },
+  "homepage": "https://github.com/KellyLSB/docker-airlock",
+  "dependencies": {
+    "mashbash": "0.0.1",
+    "chalk": "^0.4.0",
+    "grunt": "^0.4.4"
+  }
+}

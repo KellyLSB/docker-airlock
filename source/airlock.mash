@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+> system! darwin as
+
+<=text
+
+> include airlock/banner
+> include airlock/providers
+<=airlock/config
+
+##
+## Dependencies
+##
+
+<=dependencies/homebrew
+<=dependencies/git
+<=dependencies/vagrant
+<=dependencies/packer
+<=dependencies/ruby
+<=dependencies/bundler
+<=dependencies/nokogiri
+
+##
+## Provider
+##
+
+<=dependencies/provider
+
+##
+## Boot2Docker
+##
+
+<=dependencies/docker
