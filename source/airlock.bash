@@ -9,6 +9,10 @@
 
 . ./mac_only.bash
 
+# Mash: > include airlock/command
+
+. ./airlock/command.bash
+
 # Mash: > include airlock/banner
 # Mash: <=airlock/banner
 
