@@ -1,47 +1,62 @@
 # Airlock or Docker.IO and Boot2Docker
 
-So it dawned on me that Boot2Docker is amazing, but I had one complaint. Setting it up with anything other than Vagrant is a pain. Finding all the dependencies is annoying, then starting it when I wanted it was also a pain.
+So it dawned on me that Boot2Docker is amazing, but I had one complaint. Setting it up with anything other than Vagrant and Virtual Box is a pain, finding all the dependencies is annoying, then starting it when I wanted it was tedious; especially if you want to use an alternate Vagrant provider like Parallels.
 
 That's where Airlock comes in.
 
-Airlock is a tool that if Homebrew is available will install all the dependencies for you (including compiling and initializing boot2docker for alternate providers). If Homebrew is not available it point you in the right direction to install the dependencies yourself.
+Airlock is a tool that will install all the dependencies for you if Homebrew is available; including compiling and initializing boot2docker for alternate providers. If Homebrew is not available it will point you in the right direction to install the dependencies yourself.
 
-When you run `airlock` or optionally aliased to `docker` then Airlock will install dependencies and start your Docker virtual machine automatically, then Airlock will run the command requested. If the machine is already running as long as $DOCKER_HOST is pointed at a running Docker host with the administration ports available, then Airlock will ignore the starting of the virtual machine and pass the command straight to the docker client.
+When you run `airlock` or optionally aliased to `docker` then Airlock will install dependencies and start your Boot2Docker Virtual Machine or remote host automatically, using Vagrnt. Airlock will then run the command initially requested. If the machine is already running and as long as $DOCKER_HOST is pointed at a running Docker host with the administration ports available, then Airlock will ignore Vagrant altogether and pass the command straight to the Docker client.
 
-Because Airlock wraps around Vagrant and Docker this allow you to use whatever Vagrant provider you prefer.
+Because Airlock wraps around Vagrant and Docker this allow you to use whatever Vagrant provider you like; including providers like AWS or even Open Stack (while this is untested, my theory is that if vagrant is handling the provider is should be possible)
+.
 
 Note: This has only been tested with Parallels at this time.
 
-### Built for paranoid engineers
+## Built for paranoid engineers
 
-If Airlock needs to install dependencies Airlock will printout a list of all the commands that will be run during the dependency instal process. Don't believe me? Check out the source code; it's open and MIT.
+If Airlock needs to install dependencies Airlock will print out a list of all the commands that will be run during the dependency installation process. Don't believe me? Check out the source code; it's open and MIT.
 
-Example:
+Example Output:
 
 ```
-- `brew tap <repo>`
-- `brew install <package>`
+Docker Info: http://docker.io
+Commands that will be run:
+- `brew install docker`
+Would you like me to install? [y/N]:
 ```
 
-### Dependencies
+## Dependencies
 
 - *Mac OS X*
 - *Command Line Tools*
 - Homebrew (recomended)
+- Git (recomended; untested without)
+- Vagrant (Airlock can install with homebrew)
+- Packer (Airlock can install with homebrew)
+- Docker (Airlock can install with homebrew)
+- Ruby 2 (Airlock can install with homebrew and rbenv)
+- Nokogiri (Airlock can install with ruby and ruby-gems)
+- Vagrant Provider Plugin (Airlock can install with ruby, ruby-gems and bundler)
 
-### How to Install
+## How to Install
 
-Since Airlock is a work in progress at the moment you need to check out this repository. From there you can run `source/airlock.bash`. You can create a symlink of this file to `/usr/local/bin` if you would like.
+It's really simple!
 
-In the future Airlock will be distributed as a single file.
+### If you trust me.
 
-### What are these MASH Files
+1. `curl -L https://raw.githubusercontent.com/KellyLSB/docker-airlock/master/airlock > /usr/local/bin/airlock && chmod +x /usr/local/bin/airlock`
+4. Add `eval "$(airlock -)"` to your .bash_profile, .zshrc, etc..
 
-My biggest complaint writing Bash scripts is the massive amount of repetitive code. None of it is Dry and because it is Bash there is not much we can do about it. However since Bash is pretty much available by default on every Machine I decided to prepare Airlock to eventually support BashMash which is a parser and compiler that allows you to create reusable Bash statements and syntaxicly beautiful source files.
+### If you are a paranoid engineer.
 
-Want to learn more about MashBash check out the GitHub repository for MashBash at http://github.com/KellyLSB/mashbash for updates.
+2. Review contents of file
+1. `curl -L https://raw.githubusercontent.com/KellyLSB/docker-airlock/master/airlock > /usr/local/bin/airlock`
+2. Re-Review contents of file
+3. `chmod +x /usr/local/bin/airlock`
+4. Add `eval "$(airlock -)"` to your .bash_profile, .zshrc, etc...
 
-### Future of Airlock
+## Future of Airlock
 
 - Support for more operating systems:
   The goal is that eventually Airlock will support installing the dependencies for Linux based operating systems. This will mostly be used done through package managers like RPM and DEB.
@@ -51,9 +66,19 @@ Want to learn more about MashBash check out the GitHub repository for MashBash a
 - Server registry for external Docker Server that you can connect to by name.
 - .airlock files that configure Airlock to connect to your projects Docker host.
 - Let me know what you want to see.
+- Homebrew Formula
 
-### License
+## Contributing
+
+Please fork and do whatever.
+If you have an amazing addition please send me a PR.
+
+Please keep in mind that I will be using MashBash soon for the source code, which will be compiled down into Bash.
+
+Please checkout http://github.com/KellyLSB/mashbash for more information on MashBash.
+
+## License
 
 Copyright 2014 Kelly Lauren-Summer Becker-Neuding
 
-This code is offered without Warranty or Guarentee under the MIT License.
+This code is offered without Warranty or Guarantee under the MIT License.

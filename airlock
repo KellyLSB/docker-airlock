@@ -1,0 +1,634 @@
+#!/usr/bin/env bash
+
+
+# Text Manipulation
+function capitalize() { sed -e 's/^\(.\{1\}\)/\U\1/gi'; }
+function upper()      { awk '{print toupper($0)}'; }
+function lower()      { awk '{print tolower($0)}'; }
+
+# Color Effects
+function color()  { IFS= read -r text <&0; echo -e $2 "\e[$1m$text\e[0m"; }
+function black()  { color "0;30" $1; }
+function red()    { color "0;31" $1; }
+function green()  { color "0;32" $1; }
+function yellow() { color "0;33" $1; }
+function blue()   { color "0;34" $1; }
+function purple() { color "0;35" $1; }
+function cyan()   { color "0;36" $1; }
+function white()  { color "0;37" $1; }
+
+
+# Check for Mac OS
+if [ "$(uname)" != "Darwin" ]; then
+	echo "This only works on Mac OS X" 1>&2
+	exit 1
+fi
+
+
+if [ "$1" = "-" ]; then
+	IFS= read -r -d '' shell_function <<-EOF
+	function airlock() {
+	  if [ "\$DOCKER_HOST" != "" ]; then
+	    echo \$DOCKER_HOST \\
+	      | sed -e 's/tcp:\/\///gi' -e 's/:/ /gi' \\
+	      | read dh dp <&0
+
+	    timeout 1 bash -c "cat < /dev/null > /dev/tcp/\$dh/\$dp"
+	    if [ $? -ne 0 ]; then export DOCKER_HOST=""; fi
+	  fi
+
+	  if [ "\$DOCKER_HOST" = "" ]; then
+	    command airlock 5>&1 1>&2 2>(tee) | read DOCKER_HOST <&0
+	    export DOCKER_HOST
+	  fi
+
+	  [ "\$DOCKER_HOST" != "" ] && command docker \$*
+	}
+	EOF
+
+	echo -e "$shell_function" | head -n -1
+
+	if [ "$2" = "docker" ]; then
+		echo "alias \"docker\"=\"airlock\""
+	fi
+
+	exit 0
+fi
+
+
+echo "#############################################################" | red
+echo "# Title:      Airlock for Docker.IO and Boot2Docker         #" | red
+echo "# Maintainer: Kelly Becker-Neuding <kbecker@kellybecker.me> #" | red
+echo "# GitHub:     http://github.com/KellyLSB/airlock4docker     #" | red
+echo "# Website:    http://kellybecker.me/airlock.html            #" | red
+echo "#############################################################" | red
+echo ""
+
+
+##
+# Vagrant Providers
+# https://github.com/mitchellh/vagrant/wiki/Available-Vagrant-Plugins
+VAGRANT_PROVIDER_REPO_AWS="mitchellh/vagrant-aws"
+VAGRANT_PROVIDER_REPO_AZURE="MSOpenTech/Vagrant-Azure"
+VAGRANT_PROVIDER_REPO_BRIGHTBOX="NeilW/vagrant-brightbox"
+VAGRANT_PROVIDER_REPO_CLOUDSTACK="klarna/vagrant-cloudstack"
+VAGRANT_PROVIDER_REPO_DIGITALOCEAN="smdahlen/vagrant-digitalocean"
+VAGRANT_PROVIDER_REPO_GANETI="osuosl/vagrant-plugin-ganeti"
+VAGRANT_PROVIDER_REPO_HP="mohitsethi/vagrant-hp"
+VAGRANT_PROVIDER_REPO_JOYENT="someara/vagrant-joyent"
+VAGRANT_PROVIDER_REPO_KVM="adrahon/vagrant-kvm"
+VAGRANT_PROVIDER_REPO_LIBVIRT="pradels/vagrant-libvirt"
+VAGRANT_PROVIDER_REPO_LXC="fgrehm/vagrant-lxc"
+VAGRANT_PROVIDER_REPO_MANAGED_SERVERS="tknerr/vagrant-managed-servers"
+VAGRANT_PROVIDER_REPO_OPENSTACK="mat128/vagrant-openstack"
+VAGRANT_PROVIDER_REPO_OPENVZ="abrooke/vagrant-openvz"
+VAGRANT_PROVIDER_REPO_PARALLELS="Parallels/vagrant-parallels"
+VAGRANT_PROVIDER_REPO_PROXMOX="telcat/vagrant-proxmox"
+VAGRANT_PROVIDER_REPO_RACKSPACE="mitchellh/vagrant-rackspace"
+VAGRANT_PROVIDER_REPO_SOFTLAYER="audiolize/vagrant-softlayer"
+VAGRANT_PROVIDER_REPO_VCLOUD="frapposelli/vagrant-vcloud"
+VAGRANT_PROVIDER_REPO_VSPHERE="nsidc/vagrant-vsphere"
+VAGRANT_PROVIDER_REPO_WINDOWS_HYPERV="MSOpenTech/vagrant-windows-hyperv"
+
+
+# Update Configs
+: ${CWD:=$(pwd)}
+: ${AIRLOCK_PATH:=~/.docker}
+: ${VAGRANT_PROVIDER:=parallels}
+: ${VAGRANT_PROVIDER_LOWER:=$(echo $VAGRANT_PROVIDER | lower)}
+: ${VAGRANT_PROVIDER_UPPER:=$(echo $VAGRANT_PROVIDER | upper)}
+: ${VAGRANT_PROVIDER_NAME:=$(echo $VAGRANT_PROVIDER_LOWER | capitalize)}
+: ${VAGRANT_PROVIDER_PATH:="$AIRLOCK_PATH/$VAGRANT_PROVIDER_LOWER"}
+eval VAGRANT_PROVIDER_REPO="\$VAGRANT_PROVIDER_REPO_$VAGRANT_PROVIDER_UPPER"
+
+
+# Output Configuration
+#if [ "$1" = "config" ]; then
+	echo "Airlock Configuration:" | red
+
+	# Airlock Path
+	echo "  \$"          | blue -n
+	echo "AIRLOCK_PATH"  | purple -n
+	echo " ......... "   | yellow -n
+	echo "$AIRLOCK_PATH" | cyan
+
+	# Vagrant Provider
+	echo "  \$"              | blue -n
+	echo "VAGRANT_PROVIDER"  | purple -n
+	echo " ......... "       | yellow -n
+	echo "$VAGRANT_PROVIDER" | cyan
+
+	# Vagrant Provider Lower
+	echo "  \$"                    | blue -n
+	echo "VAGRANT_PROVIDER_LOWER"  | purple -n
+	echo " ... "                   | yellow -n
+	echo "$VAGRANT_PROVIDER_LOWER" | cyan
+
+	# Vagrant Provider Upper
+	echo "  \$"                    | blue -n
+	echo "VAGRANT_PROVIDER_UPPER"  | purple -n
+	echo " ... "                   | yellow -n
+	echo "$VAGRANT_PROVIDER_UPPER" | cyan
+
+	# Vagrant Provider Name
+	echo "  \$"                    | blue -n
+	echo "VAGRANT_PROVIDER_NAME"  | purple -n
+	echo " ... "                   | yellow -n
+	echo "$VAGRANT_PROVIDER_NAME" | cyan
+
+	# Vagrant Provider Path
+	echo "  \$"                   | blue -n
+	echo "VAGRANT_PROVIDER_PATH"  | purple -n
+	echo " .... "                 | yellow -n
+	echo "$VAGRANT_PROVIDER_PATH" | cyan
+
+	# Vagrant Provider Repo
+	echo "  \$"                   | blue -n
+	echo "VAGRANT_PROVIDER_REPO"  | purple -n
+	echo " .... "                 | yellow -n
+	echo "$VAGRANT_PROVIDER_REPO" | cyan
+
+	# Current Working Directory
+	echo "  \$"                     | blue -n
+	echo "CWD"                      | purple -n
+	echo " ...................... " | yellow -n
+	echo "$CWD"                     | cyan
+
+	# Space
+	echo ""
+#fi
+
+
+# Check for Hombrew
+which brew &> /dev/null
+if [ $? -eq 0 ]; then
+	brew_installed="y"
+	echo "Great! Homebrew is available." | green
+	echo "We will install any missing dependencies." | green
+else
+	brew_installed="n"
+	echo "Homebew is not available." | yellow
+	echo "I would recomend downloading the Homebrew at http://brew.sh." | yellow
+	echo "Dependencies will not be installed if they are missing." | yellow
+fi
+
+
+# Is Git Installed?
+which git &> /dev/null
+if [ $? -eq 0 ]; then
+	git_installed="y"
+	echo "Great! Git is installed." | green
+else
+	git_installed="n"
+	echo "Oh No! Git is not installed." | red
+	echo "Thankfully we can get around that." | green
+
+	echo "Note: I do recomend that you install Git though." | purple
+	echo "      You can install Git with " | purple -n
+	echo "\`brew install git\`." | yellow
+fi
+
+
+# Is Vagrant Installed?
+which vagrant &> /dev/null
+if [ $? -eq 0 ]; then
+	vagrant_installed="y"
+	echo "Great! Vagrant is installed." | green
+else
+	vagrant_installed="n"
+	echo "Oh No! Vagrant is not installed." | red
+
+	if [ "$brew_installed" = "y" ]; then
+		echo "Thankfully we can fix this via a Homebrew Cask." | green
+	fi
+
+	echo "Note: Airlock cannot run without Vagrant!." | purple
+
+	if [ "$brew_installed" = "y" ]; then
+
+		# Commands that will be run.
+		echo "Caskroom Info: http://caskroom.io" | yellow
+		echo "Commands that will be run:" | yellow
+		echo "- " | blue -n
+		echo "\`brew tap caskroom/cask\`" | yellow
+		echo "- " | blue -n
+		echo "\`brew install brew-cask\`" | yellow
+		echo "- " | blue -n
+		echo "\`brew cask install vagrant\`" | yellow
+
+		# Install Vagrant?
+		echo "Would you like me to install? [y/N]: " | yellow -n
+		read install_vagrant <&0
+		: ${install_vagrant:="n"}
+		install_vagrant="$(echo ${install_vagrant[0]} | lower)"
+
+		if [ "$install_vagrant" = "y" ]; then
+			brew tap caskroom/cask
+			brew install brew-cask
+			brew cask install vagrant
+			vagrant_installed="y"
+		fi
+	fi
+
+	if [ "$vagrant_installed" = "n" ]; then
+		echo "Please install Vagrant before running Airlock again." | red
+		echo "You can download Vagrant from http://vagrantup.com." | red
+		exit 1
+	fi
+fi
+
+
+# Is Packer Installed?
+which packer &> /dev/null
+if [ $? -eq 0 ]; then
+	packer_installed="y"
+	echo "Great! Packer is installed." | green
+else
+	packer_installed="n"
+	echo "Oh No! Packer is not installed." | red
+
+	if [ "$brew_installed" = "y" ]; then
+		echo "Thankfully we can fix this via Homebrew." | green
+	fi
+
+	echo "Note: Airlock cannot run without Packer!" | purple
+
+	if [ "$brew_installed" = "y" ]; then
+		# Commands that will be run.
+		echo "Packer Info: http://www.packer.io" | yellow
+		echo "Commands that will be run:" | yellow
+		echo "- " | blue -n
+		echo "\`brew tap homebrew/binary\`" | yellow
+		echo "- " | blue -n
+		echo "\`brew install packer\`" | yellow
+
+		# Install Packer?
+		echo "Would you like me to install? [y/N]: " | yellow -n
+		read install_packer <&0
+		: ${install_packer:="n"}
+		install_packer="$(echo ${install_packer[0]} | lower)"
+
+		if [ "$install_packer" = "y" ]; then
+			brew tap homebrew/binary
+			brew install packer
+			packer_installed="y"
+		fi
+	fi
+
+	if [ "$packer_installed" = "n" ]; then
+		echo "Please install Packer before running Airlock again." | red
+		echo "You can download Packer manually from http://www.packer.io." | red
+		exit 1
+	fi
+fi
+
+
+# Is Docker Installed?
+which docker &> /dev/null
+if [ $? -eq 0 ]; then
+	docker_installed="y"
+	echo "Great! Docker is installed." | green
+else
+	docker_installed="n"
+	echo "Oh No! Docker is not installed." | red
+
+	if [ "$brew_installed" = "y" ]; then
+		echo "Thankfully we can fix this via Homebrew." | green
+	fi
+
+	echo "Note: Airlock cannot run without Docker!" | purple
+
+	if [ "$brew_installed" = "y" ]; then
+		# Commands that will be run.
+		echo "Docker Info: http://docker.io" | yellow
+		echo "Commands that will be run:" | yellow
+		echo "- " | blue -n
+		echo "\`brew install docker\`" | yellow
+
+		# Install Docker?
+		echo "Would you like me to install? [y/N]: " | yellow -n
+		read install_docker <&0
+		: ${install_docker:="n"}
+		install_docker="$(echo ${install_docker[0]} | lower)"
+
+		if [ "$install_docker" = "y" ]; then
+			brew install docker
+			docker_installed="y"
+		fi
+	fi
+
+	if [ "$docker_installed" = "n" ]; then
+		echo "Please install Docker before running Airlock again." | red
+		echo "You can download Docker manually from http://www.docker.io." | red
+		exit 1
+	fi
+fi
+
+
+# Is Ruby Installed (it should be)?
+which ruby &> /dev/null
+if [ $? -eq 0 ]; then
+	ruby_installed="y"
+	echo "Great! Ruby is installed." | green
+else
+	ruby_installed="n"
+fi
+
+# Is Ruby 2 Installed?
+if [ "$ruby_installed" = "y" ]; then
+	ruby_version="$(ruby -v \
+		| awk '{print $2}' \
+		| sed -e 's/\s//gi')"
+	if [ "${ruby_version:0:1}" = "2" ]; then
+		ruby_installed="y"
+		echo "Great! Ruby $ruby_version is installed." | green
+	else
+		ruby_installed="n"
+	fi
+fi
+
+# If required install Ruby 2
+if [ "$ruby_installed" = "n" ]; then
+	echo "Oh No! Ruby 2 is not installed." | red
+
+	if [ "$brew_installed" = "y" ]; then
+		echo "Thankfully we can fix this via Homebrew." | green
+	fi
+
+	echo "Note: Airlock cannot run without Ruby!" | purple
+
+	if [ "$brew_installed" = "y" ]; then
+
+		# Command that will be run.
+		echo "Ruby Info: http://ruby-lang.org" | yellow
+		echo "Rbenv Info: https://github.com/sstephenson/rbenv" | yellow
+		echo "Ruby Build Info: https://github.com/sstephenson/ruby-build" | yellow
+		echo "Commands that will be run:" | yellow
+		echo "- " | blue -n
+		echo "\`brew install rbenv ruby-build\`" | yellow
+		echo "- " | blue -n
+		echo "\`rbenv install <latest version>\`" | yellow
+		echo "- " | blue -n
+		echo "\`rbenv global <latest version>\`" | yellow
+		echo "- " | blue -n
+		echo "\`rbenv rehash\`" | yellow
+
+		# Install Ruby?
+		echo -n "Would you like me to install? [y/N]: " | yellow -n
+		read install_ruby <&0
+		: ${install_ruby:="n"}
+		install_ruby="$(echo ${install_ruby[0]} | lower)"
+
+		if [ "$install_ruby" = "y" ]; then
+			brew install rbenv ruby-build
+			ruby_version="$(rbenv install -l | grep '^\s*2\.[0-9]\.[0-9]' | grep -v '\-\(rc\|preview\|dev\)[0-9]*' | sed -e 's/\s//gi' | sort -r | head -n 1)"
+			rbenv install $ruby_version
+			rbenv global $ruby_version
+			rbenv rehash
+			ruby_installed="y"
+		fi
+	fi
+fi
+
+if [ "$ruby_installed" = "n" ]; then
+	echo "Please install Ruby before running Airlock again." | red
+	exit 1
+fi
+
+
+# If required install bundler
+which bundler &> /dev/null
+if [ $? -eq 0 ]; then
+	bundler_installed="y"
+	echo "Great! Bundler is installed." | green
+else
+	bundler_installed="n"
+	echo "Oh No! Bundler is not installed." | red
+
+	if [ "$ruby_installed" = "y" ]; then
+		echo "Thankfully we can fix this via Ruby Gems." | green
+	fi
+
+	echo "Note: Airlock cannot run without Bundler!" | purple
+
+	if [ "$ruby_installed" = "y" ]; then
+		# Command that will be run.
+		echo "Ruby Info: http://ruby-lang.org" | yellow
+		echo "Rbenv Info: https://github.com/sstephenson/rbenv" | yellow
+		echo "Gem Info: http://rubygems.org" | yellow
+		echo "Bundler Info: http://bundler.io" | yellow
+		echo "Commands that will be run:" | yellow
+		echo "- " | blue -n
+		echo "\`gem install --no-ri --no-rdoc bundler\`" | yellow
+
+		which rbenv &> /dev/null
+		if [ $? -eq 0 ]; then
+			echo "- " | blue -n
+			echo "\`rbenv rehash\`" | yellow
+		fi
+
+		# Install Bundler?
+		echo "Would you like me to install? [y/N]: " | yellow -n
+		read install_bundler <&0
+		: ${install_bundler:="n"}
+		install_bundler="$(echo ${install_bundler[0]} | lower)"
+
+		if [ "$install_bundler" = "y" ]; then
+			gem install --no-ri --no-rdoc bundler
+			rbenv rehash
+			bundler_installed="y"
+		fi
+	fi
+
+	if [ "$bundler_installed" = "n" ]; then
+		echo "Please install Bundler before running Airlock again." | red
+		exit 1
+	fi
+fi
+
+
+# If required install nokogiri
+which nokogiri &> /dev/null
+if [ $? -eq 0 ]; then
+	nokogiri_installed="y"
+	echo "Great! Nokogiri is installed." | green
+else
+	nokogiri_installed="n"
+	echo "Oh No! Nokogiri is not installed." | red
+
+	if [ "$ruby_installed" = "y" ]; then
+		echo "Thankfully we can fix this via Ruby Gems." | green
+	fi
+
+	echo "Note: Airlock cannot run without Nokogiri!" | purple
+
+	if [ "$ruby_installed" = "y" ]; then
+		# Command that will be run.
+		echo "Ruby Info: http://ruby-lang.org" | yellow
+		echo "Rbenv Info: https://github.com/sstephenson/rbenv" | yellow
+		echo "Gem Info: http://rubygems.org" | yellow
+		echo "Commands that will be run:" | yellow
+		echo "- " | blue -n
+		echo "\`gem install --user-install nokogiri\`" | yellow
+
+		which rbenv &> /dev/null
+		if [ $? -eq 0 ]; then
+			echo "- " | blue -n
+			echo "\`rbenv rehash\`" | yellow
+		fi
+
+		# Install Bundler?
+		echo "Would you like me to install? [y/N]: " | yellow -n
+		read install_nokogiri <&0
+		: ${install_nokogiri:="n"}
+		install_nokogiri="$(echo ${install_nokogiri[0]} | lower)"
+
+		if [ "$install_nokogiri" = "y" ]; then
+			gem install --no-ri --no-rdoc nokogiri -- --use-system-libraries
+			rbenv rehash
+			nokogiri_installed="y"
+		fi
+	fi
+
+	if [ "$nokogiri_installed" = "n" ]; then
+		echo "Please install Nokogiri before running Airlock again." | red
+		exit 1
+	fi
+fi
+
+
+# If required install Vagrant Provider
+vagrant plugin list | grep $VAGRANT_PROVIDER_LOWER > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+	vagrant_provider_installed="y"
+	echo "Great! The Vagrant Provider for " | green -n
+	echo "$VAGRANT_PROVIDER_NAME is installed." | green
+else
+	vagrant_provider_installed="n"
+	echo "Oh No! The Vagrant Provider for " | red -n
+	echo "$VAGRANT_PROVIDER_NAME is not installed." | red
+
+	if [ "$git_installed" = "y" ] \
+		&& [ "$ruby_installed" = "y" ] \
+		&& [ "$bundler_installed" = "y" ] \
+		&& [ "$nokogiri_installed" = "y" ]; then
+		echo "Thankfully we can fix this via " | green -n
+		echo "Git, Ruby Gems, Bundler and Nokogiri." | green
+	elif [ "$ruby_installed" = "y" ] \
+		&& [ "$bundler_installed" = "y" ] \
+		&& [ "$nokogiri_installed" = "y" ]; then
+		echo "Thankfully we can fix this via " | green -n
+		echo "Curl, Tar, Ruby Gems, Bundler and Nokogiri." | green
+	fi
+
+	echo "Note: Airlock cannot run without a Vagrant Provider!" | purple
+
+	if [ "$git_installed" = "y" ]; then
+		git ls-remote $VAGRANT_PROVIDER_REPO &> /dev/null
+		if [ $? -ne 0 ]; then
+			VAGRANT_PROVIDER_REPO="https://github.com/$VAGRANT_PROVIDER_REPO.git"
+		fi
+	else
+		curl -L $VAGRANT_PROVIDER_REPO &> /dev/null
+		if [ $? -ne 0 ]; then
+			VAGRANT_PROVIDER_REPO="https://github.com/$VAGRANT_PROVIDER_REPO/archive/master.tar.gz"
+		fi
+	fi
+
+	if [ "$git_installed" = "y" ] \
+		&& [ "$ruby_installed" = "y" ] \
+		&& [ "$bundler_installed" = "y" ] \
+		&& [ "$nokogiri_installed" = "y" ]; then
+
+		# Command that will be run.
+		echo "Git Info: http://git-scm.org" | yellow
+		echo "Ruby Info: http://ruby-lang.org" | yellow
+		echo "Gem Info: http://rubygems.org" | yellow
+		echo "Bundler Info: http://bundler.io" | yellow
+		echo "Commands that will be run:" | yellow
+		echo "- " | blue -n
+		echo "\`git clone $VAGRANT_PROVIDER_REPO $VAGRANT_PROVIDER_PATH\`" | yellow
+		echo "- " | blue -n
+		echo "\`cd $VAGRANT_PROVIDER_PATH; " | yellow -n
+		echo "bundle install; cd $CWD\`" | yellow
+		echo "- " | blue -n
+		echo "\`cd $VAGRANT_PROVIDER_PATH; " | yellow -n
+		echo "rake build;\`" | yellow
+		echo "- " | blue -n
+		echo "\`cd $VAGRANT_PROVIDER_PATH; " | yellow -n
+		echo "vagrant plugin install ./pkg/<latest>.gem\`" | yellow
+
+		# Install Vagrant Plugin?
+		echo "Would you like me to install? [y/N]: " | yellow -n
+		read install_vagrant_plugin <&0
+		: ${install_vagrant_plugin:="n"}
+		install_vagrant_plugin="$(echo ${install_vagrant_plugin[0]} | lower)"
+
+		if [ "$install_vagrant_plugin" = "y" ]; then
+			git clone $VAGRANT_PROVIDER_REPO $VAGRANT_PROVIDER_PATH
+			cd $VAGRANT_PROVIDER_PATH
+			bundle install
+			rake build
+			provider_gem="$(find ./pkg/*.gem -type file | sort -r | head -n 1)"
+			vagrant plugin install $provider_gem 2> /dev/null
+			vagrant_provider_installed="y"
+			cd $CWD
+		fi
+	elif [ "$ruby_installed" = "y" ] \
+		&& [ "$bundler_installed" = "y" ] \
+		&& [ "$nokogiri_installed" = "y" ]; then
+
+		# Command that will be run.
+		echo "Ruby Info: http://ruby-lang.org" | yellow
+		echo "Gem Info: http://rubygems.org" | yellow
+		echo "Bundler Info: http://bundler.io" | yellow
+		echo "Commands that will be run:" | yellow
+		echo "- " | blue -n
+		echo "\`curl -L $VAGRANT_PROVIDER_REPO | tar -xzvf --strip-components 1 -C $VAGRANT_PROVIDER_PATH\`" | yellow
+		echo "- " | blue -n
+		echo "\`cd $VAGRANT_PROVIDER_PATH; " | yellow -n
+		echo "bundle install; cd $CWD\`" | yellow
+		echo "- " | blue -n
+		echo "\`cd $VAGRANT_PROVIDER_PATH; " | yellow -n
+		echo "rake build;\`" | yellow
+		echo "- " | blue -n
+		echo "\`cd $VAGRANT_PROVIDER_PATH; " | yellow -n
+		echo "vagrant plugin install ./pkg/<latest>.gem\`" | yellow
+
+		# Install Vagrant Plugin?
+		echo "Would you like me to install? [y/N]: " | yellow -n
+		read install_vagrant_plugin <&0
+		: ${install_vagrant_plugin:="n"}
+		install_vagrant_plugin="$(echo ${install_vagrant_plugin[0]} | lower)"
+
+		if [ "$install_vagrant_plugin" = "y" ]; then
+			curl -L $VAGRANT_PROVIDER_REPO | tar -xzvf --strip-components 1 -C $VAGRANT_PROVIDER_PATH
+			cd $VAGRANT_PROVIDER_PATH
+			bundle install
+			rake build
+			provider_gem="$(find ./pkg/*.gem -type file | sort -r | head -n 1)"
+			vagrant plugin install $provider_gem 2> /dev/null
+			vagrant_provider_installed="y"
+			cd $CWD
+		fi
+	fi
+
+	if [ "$vagrant_provider_installed" = "n" ]; then
+		echo "Please install The Vagrant Provider before running Airlock again." | red
+		exit 1
+	fi
+fi
+
+
+# Install/Launch Vagrant Parallels Boot2Docker
+mkdir -p "$AIRLOCK_PATH/boot2docker"
+cd "$AIRLOCK_PATH/boot2docker"
+vagrant init $VAGRANT_PROVIDER_LOWER/boot2docker 2> /dev/null
+vagrant up --provider $VAGRANT_PROVIDER_LOWER
+if [ $? -eq 0 ]; then
+	AIRLOCK_HOST="$(vagrant ssh-config | sed -n 's/[ ]*HostName[ ]*//gp')"
+	echo "tcp://$AIRLOCK_HOST:4243" >&5
+else
+	echo "There was an issue starting up boot2docker on $VAGRANT_PROVIDER_NAME." \
+		| red
+fi

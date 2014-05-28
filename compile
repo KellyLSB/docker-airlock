@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+grep '^\. ' ./source/airlock.bash \
+  | sed -e 's/^\. \./\.\/source/i' \
+  | xargs cat > ./airlock.tmp
+
+echo '#!/usr/bin/env bash' > ./airlock
+
+cat ./airlock.tmp \
+  | sed -e 's/^#\!\/usr\/bin\/env bash$//gi' >> ./airlock
+
+chmod +x ./airlock
+
+rm -f ./airlock.tmp
+
+exit 0
