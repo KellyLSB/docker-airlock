@@ -56,6 +56,10 @@ It's really simple!
 3. `chmod +x /usr/local/bin/airlock`
 4. Add `eval "$(airlock -)"` to your .bash_profile, .zshrc, etc...
 
+### I want airlock to wrap around my `docker` command
+
+Sure thing in your .bash_profile, .zshrc, etc... instead of the above add `eval "$(airlock - docker)"`; it will create the alias for you automatically.
+
 ## Future of Airlock
 
 - Support for more operating systems:
